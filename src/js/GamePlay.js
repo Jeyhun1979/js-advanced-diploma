@@ -75,6 +75,10 @@ export default class GamePlay {
 
     for (const position of positions) {
       const cellEl = this.boardEl.children[position.position];
+      if (!cellEl) {
+        console.warn('redrawPositions: invalid position index', position.position);
+        continue;
+      }
       const charEl = document.createElement('div');
       charEl.classList.add('character', position.character.type);
 
@@ -213,7 +217,9 @@ export default class GamePlay {
       cell.appendChild(damageEl);
 
       damageEl.addEventListener('animationend', () => {
-        cell.removeChild(damageEl);
+        if (damageEl.parentNode) {
+          cell.removeChild(damageEl);
+        }
         resolve();
       });
     });

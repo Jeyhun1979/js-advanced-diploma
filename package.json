@@ -1,0 +1,48 @@
+{
+  "name": "js-advanced-diploma",
+  "version": "1.0.0",
+  "description": "Вы неплохо овладели не только продвинутыми возможностями JS, но и инфраструктурными инструментами. Вам поручили первый проект: разработать небольшую пошаговую игру.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest --coverage",
+    "build": "webpack --mode production",
+    "start": "webpack serve --mode development",
+    "lint": "eslint .",
+    "prepare": "husky install" 
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jeyhun1979/js-advanced-diploma.git"
+  },
+  "keywords": [
+    "game"
+  ],
+  "author": "Jeyhun",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Jeyhun1979/js-advanced-diploma/issues"
+  },
+  "homepage": "https://github.com/Jeyhun1979/js-advanced-diploma#readme",
+  "devDependencies": {
+    "@babel/cli": "^7.28.3",
+    "@babel/core": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
+    "@eslint/js": "^9.39.1",
+    "babel-jest": "^30.2.0",
+    "babel-loader": "^10.0.0",
+    "css-loader": "^7.1.2",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "html-webpack-plugin": "^5.6.4",
+    "husky": "^9.1.7",
+    "jest": "^30.2.0",
+    "mini-css-extract-plugin": "^2.9.4",
+    "style-loader": "^4.0.0",
+    "webpack": "^5.102.1",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.2"
+  },
+  "dependencies": {
+    "core-js": "^3.46.0"
+  }
+}
