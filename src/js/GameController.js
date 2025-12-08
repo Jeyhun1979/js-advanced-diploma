@@ -26,6 +26,7 @@ export default class GameController {
   init() {
     this.gamePlay.drawUi('prairie');
     this.loadState();
+    this.gamePlay.redrawPositions(this.positions);
     this.addGamePlayListeners();
   }
 
@@ -72,8 +73,8 @@ export default class GameController {
           }).filter(x => x);
 
           this.positions = positioned;
-          const playerChars = positioned.map(p => p.character).filter(c => this.isPlayerCharacter(c));
-          const compChars = positioned.map(p => p.character).filter(c => !this.isPlayerCharacter(c));
+          const playerChars = positioned.map(p => p.character).filter(c => ['bowman', 'swordsman', 'magician'].includes(c.type));
+          const compChars = positioned.map(p => p.character).filter(c => !['bowman', 'swordsman', 'magician'].includes(c.type));
           this.team = new Team(playerChars);
           this.computerTeam = new Team(compChars);
         } else {
@@ -103,7 +104,6 @@ export default class GameController {
           const positionedComputerTeam = this.computerTeam.getAllCharacters().map((char, index) => new PositionedCharacter(char, compPositions[index]));
           this.positions = [...positionedPlayerTeam, ...positionedComputerTeam];
         }
-        this.gamePlay.redrawPositions(this.positions);
       } else {
         this.startNewGame();
       }
@@ -242,25 +242,19 @@ export default class GameController {
   }
 
   isPlayerCharacter(character) {
-    return character instanceof Bowman || character instanceof Swordsman || character instanceof Magician;
+    return this.team.has(character);
   }
 
   canMove(character, from, to) {
     if (this.getCharacterByCell(to)) return false;
     const dist = this.calculateDistance(from, to);
-    if (character instanceof Swordsman || character instanceof Undead) return dist <= 4;
-    if (character instanceof Bowman || character instanceof Vampire) return dist <= 2;
-    if (character instanceof Magician || character instanceof Daemon) return dist <= 1;
-    return false;
+    return dist <= character.moveMax;
   }
 
   canAttack(character, from, to) {
     if (!this.getCharacterByCell(to)) return false;
     const dist = this.calculateDistance(from, to);
-    if (character instanceof Swordsman || character instanceof Undead) return dist === 1;
-    if (character instanceof Bowman || character instanceof Vampire) return dist <= 2;
-    if (character instanceof Magician || character instanceof Daemon) return dist <= 4;
-    return false;
+    return dist <= character.attackMax;
   }
 
   calculateDistance(from, to) {
@@ -288,9 +282,10 @@ export default class GameController {
   moveCharacter(character, to) {
     const pos = this.positions.find(p => p.character === character);
     if (pos) {
-      const prev = pos.position;
       pos.position = to;
-      try { this.gamePlay.deselectCell(prev); } catch (err) { console.warn('deselect failed', err); }
+    }
+    for (let i = 0; i < 64; i++) {
+      this.gamePlay.deselectCell(i);
     }
     this.gamePlay.redrawPositions(this.positions);
     if (this.gameState) {
@@ -306,10 +301,17 @@ export default class GameController {
     this.gamePlay.showDamage(targetPos, damage).then(() => {
       if (target.health <= 0) {
         this.positions = this.positions.filter(p => p.character !== target);
-        if (this.isPlayerCharacter(target)) this.team.characters = this.team.characters.filter(c => c !== target);
-        else this.computerTeam.characters = this.computerTeam.characters.filter(c => c !== target);
+        if (this.team.has(target)) {
+          this.team.removeCharacter(target);
+        } else {
+          this.computerTeam.removeCharacter(target);
+        }
       }
       this.gamePlay.redrawPositions(this.positions);
+      for (let i = 0; i < 64; i++) {
+        this.gamePlay.deselectCell(i);
+      }
+      this.selectedCell = null;
       if (this.gameState) {
         this.gameState.positions = this.serializePositions();
         try { this.stateService.save(this.gameState); } catch (err) { console.warn('Save failed', err); }
@@ -323,12 +325,12 @@ export default class GameController {
   }
 
   nextTurn() {
-    if (this.computerTeam.characters.length === 0) {
+    if (this.computerTeam.characters.size === 0) {
       this.levelUpPlayer();
       this.startNewLevel();
       return;
     }
-    if (this.team.characters.length === 0) {
+    if (this.team.characters.size === 0) {
       GamePlay.showError('Game Over');
       return;
     }
@@ -337,8 +339,8 @@ export default class GameController {
   }
 
   computerMove() {
-    const target = this.team.characters[0];
-    const attacker = this.computerTeam.characters[0];
+    const target = this.team.getAllCharacters()[0];
+    const attacker = this.computerTeam.getAllCharacters()[0];
     const attackerPos = this.positions.find(p => p.character === attacker)?.position;
     const targetPos = this.positions.find(p => p.character === target)?.position;
 
@@ -352,11 +354,7 @@ export default class GameController {
       return;
     }
 
-    let moveRange = 0;
-    if (attacker instanceof Swordsman || attacker instanceof Undead) moveRange = 4;
-    else if (attacker instanceof Bowman || attacker instanceof Vampire) moveRange = 2;
-    else if (attacker instanceof Magician || attacker instanceof Daemon) moveRange = 1;
-
+    const moveRange = attacker.moveMax;
     const boardSize = 8;
     const occupiedPos = this.positions.map(p => p.position);
     const distanceToTarget = this.calculateDistance(attackerPos, targetPos);
@@ -406,13 +404,15 @@ export default class GameController {
   }
 
   startNewLevel() {
+    this.gameState.level = (this.gameState.level || 0) + 1;
     const themes = ['prairie', 'desert', 'arctic', 'mountain'];
-    const currentTheme = themes[Math.min(this.gameState.level || 0, themes.length - 1)];
+    const currentTheme = themes[Math.min(this.gameState.level - 1, themes.length - 1)];
     this.gamePlay.drawUi(currentTheme);
     this.startNewGame();
   }
 
   onNewGame() {
+    this.gameState = new GameState();
     this.startNewGame();
   }
 
@@ -427,6 +427,10 @@ export default class GameController {
   onLoadGame() {
     try {
       this.loadState();
+      const themes = ['prairie', 'desert', 'arctic', 'mountain'];
+      const themeIndex = Math.min(Math.max(this.gameState.level - 1, 0), themes.length - 1);
+      const currentTheme = themes[themeIndex];
+      this.gamePlay.drawUi(currentTheme);
       this.gamePlay.redrawPositions(this.positions);
       this.selectedCell = null;
       this.isPlayerTurn = true;

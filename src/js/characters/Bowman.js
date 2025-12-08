@@ -5,5 +5,7 @@ export default class Bowman extends Character {
     super(level, 'bowman');
     this.attack = 25;
     this.defence = 25;
+    this.moveMax = 2;
+    this.attackMax = 2;
   }
 }

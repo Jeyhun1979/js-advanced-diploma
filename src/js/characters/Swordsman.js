@@ -5,5 +5,7 @@ export default class Swordsman extends Character {
     super(level, 'swordsman');
     this.attack = 40;
     this.defence = 10;
+    this.moveMax = 4;
+    this.attackMax = 1;
   }
 }
